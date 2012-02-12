@@ -1,5 +1,8 @@
 Author: 
-	Rahul P
+	Rahul P [ rahulp0491@gmail.com ]
 
 Description:
 	Virtual Machine management software to connect to a remote as well as local hypervisor thereby providing a virtualized environment in a cloud environment.
+
+Tools:
+	libvirt API [ http://libvirt.org/ ]
