@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <libvirt/libvirt.h>			// INCLUDING THE LIBVIRT LIBRARY
 
-/* -------------------------------------ERROR LOG ------------------------------------------------*/
+/* -------------------------------------ERROR LOG -----------------------------------------------*/
 void error (char *errMsg) {
 	fprintf (stderr, "ERROR: %s\n", errMsg);
 	exit(1);
