@@ -11,7 +11,7 @@ void error (char *errMsg) {
 /* ---------------------------------------MAIN--------------------------------------------------- */
 int main (int argc, char *argv[]) {
 	virConnectPtr conn;			// CREATING AN OBJECT USING virConnectPtr HANDLER
-	conn = virConnectOpen ("xen:///system");		// CONNECTING TO LOCAL XEN HYPERVISOR 
+	conn = virConnectOpen ("xen:///");		// CONNECTING TO LOCAL XEN HYPERVISOR 
 	if (conn == NULL)
 		error ("Failed to open connection to xen:///system");
 	
