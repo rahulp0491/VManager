@@ -10,12 +10,12 @@ void error (char *errMsg) {
 
 /* ---------------------------------------MAIN--------------------------------------------------- */
 int main (int argc, char *argv[]) {
-	virConnectPtr conn;						// CREATING AN OBJECT USING virConnectPtr HANDLER
-	conn = virConnectOpen ("Xen:///system");	// CONNECTING TO LOCAL XEN HYPERVISOR 
+	virConnectPtr conn;			// CREATING AN OBJECT USING virConnectPtr HANDLER
+	conn = virConnectOpen ("xen:///system");	`// CONNECTING TO LOCAL XEN HYPERVISOR 
 	if (conn == NULL)
-		error ("Failed to open connection to Xen:///system");
+		error ("Failed to open connection to xen:///system");
 	
-	virConnectClose (conn);					// CLOSING CONNECTION
+	virConnectClose (conn);			// CLOSING CONNECTION
 	return 0;
 }
 
