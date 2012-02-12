@@ -8,7 +8,7 @@ void error (char *errMsg) {
 	exit(1);
 }
 
-/* ---------------------------------------MAIN------------------------------------------------------ */
+/* ---------------------------------------MAIN--------------------------------------------------- */
 int main (int argc, char *argv[]) {
 	virConnectPtr conn;						// CREATING AN OBJECT USING virConnectPtr HANDLER
 	conn = virConnectOpen ("Xen:///system");	// CONNECTING TO LOCAL XEN HYPERVISOR 
