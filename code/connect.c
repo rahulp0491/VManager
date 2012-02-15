@@ -1,20 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <libvirt/libvirt.h>			// INCLUDING THE LIBVIRT LIBRARY
-
-/* -------------------------------------ERROR LOG -----------------------------------------------*/
-void error (char *errMsg) {
-	fprintf (stderr, "ERROR: %s\n", errMsg);
-	exit(1);
-}
+#include "vm_functions.h"
 
 /* ---------------------------------------MAIN--------------------------------------------------- */
 int main (int argc, char *argv[]) {
 	virConnectPtr conn;			// CREATING AN OBJECT USING virConnectPtr HANDLER
-	conn = virConnectOpen ("xen:///");		// CONNECTING TO LOCAL XEN HYPERVISOR 
+	if (argc != 2) 
+		vm_error ("Insufficient arguments");
+	char *uri = argv[1];
+	conn = virConnectOpen (uri);		// CONNECTING TO LOCAL XEN HYPERVISOR 
 	if (conn == NULL)
-		error ("Failed to open connection to xen:///system");
-	
+		fprintf (stderr, "ERROR %d: Failed to open connection to %s", errno, uri);
+	vm_getcapabilities (conn);
 	virConnectClose (conn);			// CLOSING CONNECTION
 	return 0;
 }
