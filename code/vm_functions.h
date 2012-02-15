@@ -11,10 +11,11 @@ void vm_error (char *errMsg) {
 	exit(1);
 }
 
+/* GET CAPABILITIES OF NODE */
 void vm_getcapabilities (virConnectPtr conn) {
 	FILE *fp;
 	char *caps;
-	fp = fopen ("capabilities.xml", "w");
+	fp = fopen ("capabilities.xml", "w+");
 	caps = virConnectGetCapabilities(conn);
 	fprintf(fp, "%s\n", caps);
 }
