@@ -3,23 +3,26 @@
   <host>
     <uuid>44454c4c-4e00-1037-8050-b6c04f354253</uuid>
     <cpu>
-      <arch>x86_64</arch>
-      <model>Penryn</model>
+      <arch>i686</arch>
+      <model>n270</model>
       <vendor>Intel</vendor>
       <topology sockets='1' cores='2' threads='1'/>
+      <feature name='lahf_lm'/>
+      <feature name='lm'/>
+      <feature name='sse4.1'/>
       <feature name='xtpr'/>
+      <feature name='cx16'/>
       <feature name='tm2'/>
       <feature name='est'/>
       <feature name='vmx'/>
       <feature name='ds_cpl'/>
-      <feature name='monitor'/>
       <feature name='pbe'/>
       <feature name='tm'/>
       <feature name='ht'/>
       <feature name='ss'/>
       <feature name='acpi'/>
       <feature name='ds'/>
-      <feature name='vme'/>
+      <feature name='pse36'/>
     </cpu>
     <migration_features>
       <live/>
@@ -27,6 +30,10 @@
         <uri_transport>tcp</uri_transport>
       </uri_transports>
     </migration_features>
+    <secmodel>
+      <model>apparmor</model>
+      <doi>0</doi>
+    </secmodel>
   </host>
 
   <guest>
