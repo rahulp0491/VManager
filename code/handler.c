@@ -41,9 +41,7 @@ int getNextDomainThreadNum (int conNum) {
 			return i;
 		}
 	}
-	if (i == MaxNumDomains) {
-		return -1;
-	}
+	return -1;
 }
 
 int getNextConnThread () {
@@ -53,24 +51,20 @@ int getNextConnThread () {
 			return i;
 		}
 	}
-	if (i == MaxNumConnections) {
-		return -1;
-	}
+	return -1;
 }
 
 int isConnectionEstablished (char *hostname) {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
 		if (connection[i].conn != NULL) {
-			printf ("host: %d\t%s\n",i, virConnectGetHostname (connection[i].conn));
+// 			printf ("host: %d\t%s\n",i, virConnectGetHostname (connection[i].conn));
 			if (!strcmp(virConnectGetHostname (connection[i].conn), hostname)) {
 				return i;
 			}
 		}
 	}
-	if (i == MaxNumConnections) {
-		return -1;
-	}
+	return -1;
 }
 
 void *manageDomain (void *arg) {
@@ -100,12 +94,12 @@ void *manageDomain (void *arg) {
 	}
 	connection[conNum].dom[domainNum] = virDomainDefineXML (connection[conNum].conn, xmlConfig);
 	if (!connection[conNum].dom[domainNum]) {
-		fprintf(stderr, "Domain definition failed\n\n");
+		fprintf(stderr, "Error: Domain definition failed\n\n");
 		return NULL;
 	}
 	if (virDomainCreate(connection[conNum].dom[domainNum]) < 0) {
 		virDomainFree(connection[conNum].dom[domainNum]);
-		fprintf(stderr, "Cannot boot guest\n\n");
+		fprintf(stderr, "Error: Cannot boot guest\n\n");
 		return NULL;
 	}
 	fprintf(stderr, "Guest has booted\n\n");
@@ -139,12 +133,16 @@ int assignNum (char *input) {
 		return DESTROY;
 	else if (!strcmp (input, "numofdomains"))
 		return NUMDOMAIN;
+	else if (!strcmp (input, "nodeinfo"))
+		return NODEINFO;
+	else 
+		return -1;
 }
 
 int createConnection (int conNum) {
 	int rc;
 	rc = pthread_create (&cThread[conNum].connThread, NULL, manageConnections, (void *)conNum);
-	printf ("conThread: %d\n", conNum);
+// 	printf ("conThread: %d\n", conNum);
 	assert (rc == 0);
 	rc = pthread_join (cThread[conNum].connThread, NULL);
 	assert (rc == 0);
@@ -159,10 +157,22 @@ void *manageConnections (void *arg) {
 	conNum = (int)arg;
 	connection[conNum].conn = virConnectOpen (uri);
 	if (connection[conNum].conn == NULL) {
-		fprintf (stderr, "Failed to open connection to %s\n\n", uri);
+		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
 		return NULL;
 	}
 	printf ("Connection to %s established\n\n", uri);
+	return NULL;
+}
+
+void printNodeInfo (virNodeInfo nodeinfo) {
+	fprintf (stdout, "Model: %s\n", nodeinfo.model);
+	fprintf (stdout, "Memory size: %lu kb\n", nodeinfo.memory);
+	fprintf (stdout, "Number of CPUs: %u\n", nodeinfo.cpus);
+	fprintf (stdout, "MHz of CPUs: %u\n", nodeinfo.mhz);
+	fprintf (stdout, "Number of NUMA nodes: %u\n", nodeinfo.nodes);
+	fprintf (stdout, "Number of CPU sockets: %u\n", nodeinfo.sockets);
+	fprintf (stdout, "Number of CPU cores per socket: %u\n", nodeinfo.cores);
+	fprintf (stdout, "Number of CPU threads per socket: %u\n\n", nodeinfo.threads);
 }
 
 int handleInput (int input) {
@@ -184,11 +194,11 @@ int handleInput (int input) {
 				strcpy (line, virConnectGetHostname (connection[conNum].conn));
 			}
 			else {
-				fprintf (stderr, "Invalid connection\n");
+				fprintf (stderr, "Error: Invalid connection\n\n");
 				return -1;
 			}
 			if (virConnectClose (connection[conNum].conn) < 0) {
-				fprintf (stderr, "Failed to close connection to %s\n", line);
+				fprintf (stderr, "Error: Failed to close connection to %s\n\n", line);
 				return -1;
 			}
 			printf ("Connection to %s closed\n\n", line);
@@ -206,7 +216,7 @@ int handleInput (int input) {
 				strcpy (hostname, virConnectGetHostname (connection[conNum].conn));
 			}
 			else {
-				fprintf (stderr, "Invalid connection\n");
+				fprintf (stderr, "Error: Invalid connection\n\n");
 				return -1;
 			}
 			numDomains = virConnectNumOfDomains (connection[conNum].conn);
@@ -222,10 +232,9 @@ int handleInput (int input) {
 			isret = isConnectionEstablished (hostname);
 			if (isret >= 0) {
 				conNum = isret;
-// 				strcpy (hostname, virConnectGetHostname (connection[conNum].conn));
 			}
 			else {
-				fprintf (stderr, "Invalid connection\n");
+				fprintf (stderr, "Error: Invalid connection\n\n");
 				return -1;
 			}
 			createDomain (conNum);
@@ -235,12 +244,23 @@ int handleInput (int input) {
 		case SHUTDOWN: {
 			printf ("Enter domain name: ");
 			char domName [20];
-			int ret, conNum;
+			int isret, conNum;
 			scanf ("%s", domName);
+			char hostname [50];
+			printf ("Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection\n\n");
+				return -1;
+			}
 			virDomainPtr dom;
 			dom = virDomainLookupByName (connection[conNum].conn, domName);
-			ret = virDomainShutdown(dom);
-			if (ret != 0) {
+			isret = virDomainShutdown(dom);
+			if (isret != 0) {
 				fprintf (stderr, "Error: Cannot shutdown domain object\n\n");
 				return -1;
 			}
@@ -251,8 +271,32 @@ int handleInput (int input) {
 		}
 		break;
 		
+		case NODEINFO: {
+			int isret, conNum;
+			char hostname [50];
+			printf ("Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection\n\n");
+				return -1;
+			}
+			virNodeInfo nodeinfo;
+			isret = virNodeGetInfo(connection[conNum].conn, &nodeinfo);
+			if (isret != 0) {
+				fprintf (stderr, "Error: Cannot get node information of %s\n\n", hostname);
+				return -1;
+			}
+			printNodeInfo (nodeinfo);
+		}
+		break;
+		
 		default:
 			fprintf (stderr, "Error: Invalid input\n\n");
 		break;
 	}
+	return 0;
 }
