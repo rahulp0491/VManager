@@ -1,5 +1,5 @@
 all:
-	gcc -Wall -pthread main.c -o vmanager -lvirt 
+	gcc -Wall -pthread main.c handler.c -o vmanager -lvirt 
 
 clean:
 	rm vmanager
