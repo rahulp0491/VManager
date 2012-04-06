@@ -20,5 +20,6 @@ int main (int argc, char *argv[]) {
 		inputNum = assignNum (input);
 		handleInput (inputNum);
 	}
+	return 0;
 }
 
