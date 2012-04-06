@@ -15,6 +15,7 @@
 #define REBOOT 10
 #define DESTROY 11
 #define NUMDOMAIN 12
+#define NODEINFO 13
 
 int assignNum (char *input);
 int handleInput (int input);
@@ -26,3 +27,4 @@ int createConnection (int conNum);
 void *manageConnections (void *arg);
 int isConnectionEstablished (char *hostname);
 int getNextConnThread ();
+void printNodeInfo (virNodeInfo nodeinfo);
