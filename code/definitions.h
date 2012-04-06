@@ -3,6 +3,8 @@
 #define MaxFileName 100
 #define MaxNumConnections 10
 
+#define NumOfInputOptions 15
+
 #define CONNECT 1
 #define CLOSECON 2
 #define DUMPXML 3
@@ -17,6 +19,7 @@
 #define NUMDOMAIN 12
 #define NODEINFO 13
 #define NODELIST 14
+#define NODECAP 15
 
 int assignNum (char *input);
 int handleInput (int input);
