@@ -16,6 +16,7 @@
 #define DESTROY 11
 #define NUMDOMAIN 12
 #define NODEINFO 13
+#define NODELIST 14
 
 int assignNum (char *input);
 int handleInput (int input);
@@ -28,3 +29,4 @@ void *manageConnections (void *arg);
 int isConnectionEstablished (char *hostname);
 int getNextConnThread ();
 void printNodeInfo (virNodeInfo nodeinfo);
+void printNodeList ();
