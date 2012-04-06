@@ -14,10 +14,21 @@ struct connThreadStruct {
 
 struct connStruct {
 	virConnectPtr conn;
+	int isconnected;
 	virDomainPtr dom [MaxNumDomains];
 	int numGuestDomains;
 }connection[MaxNumConnections];
 
+
+void printNodeList () {
+	int i;
+	for (i=0; i<MaxNumConnections; i++) {
+		if (connection[i].isconnected != 0) {
+			fprintf (stdout, "%s\n", virConnectGetHostname (connection[i].conn));
+		}
+	}
+	printf ("\n");
+}
 
 int createDomain (int conNum) {
 	int rc;
@@ -57,8 +68,7 @@ int getNextConnThread () {
 int isConnectionEstablished (char *hostname) {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
-		if (connection[i].conn != NULL) {
-// 			printf ("host: %d\t%s\n",i, virConnectGetHostname (connection[i].conn));
+		if (connection[i].isconnected == 1) {
 			if (!strcmp(virConnectGetHostname (connection[i].conn), hostname)) {
 				return i;
 			}
@@ -88,11 +98,13 @@ void *manageDomain (void *arg) {
 	if (isret < 0) {
 		conNum = getNextConnThread();
 		createConnection (conNum);
+		virConnectRef (connection[conNum].conn);
 	}
 	else {
 		conNum = isret;
 	}
 	connection[conNum].dom[domainNum] = virDomainDefineXML (connection[conNum].conn, xmlConfig);
+	virConnectRef (connection[conNum].conn);
 	if (!connection[conNum].dom[domainNum]) {
 		fprintf(stderr, "Error: Domain definition failed\n\n");
 		return NULL;
@@ -135,6 +147,8 @@ int assignNum (char *input) {
 		return NUMDOMAIN;
 	else if (!strcmp (input, "nodeinfo"))
 		return NODEINFO;
+	else if (!strcmp (input, "nodelist"))
+		return NODELIST;
 	else 
 		return -1;
 }
@@ -160,6 +174,8 @@ void *manageConnections (void *arg) {
 		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
 		return NULL;
 	}
+// 	virConnectRef (connection[conNum].conn);
+	connection[conNum].isconnected = 1;
 	printf ("Connection to %s established\n\n", uri);
 	return NULL;
 }
@@ -201,6 +217,7 @@ int handleInput (int input) {
 				fprintf (stderr, "Error: Failed to close connection to %s\n\n", line);
 				return -1;
 			}
+			connection[conNum].isconnected = 0;
 			printf ("Connection to %s closed\n\n", line);
 		}
 		break;
@@ -260,6 +277,7 @@ int handleInput (int input) {
 			virDomainPtr dom;
 			dom = virDomainLookupByName (connection[conNum].conn, domName);
 			isret = virDomainShutdown(dom);
+			virConnectClose (connection[conNum].conn);
 			if (isret != 0) {
 				fprintf (stderr, "Error: Cannot shutdown domain object\n\n");
 				return -1;
@@ -291,6 +309,11 @@ int handleInput (int input) {
 				return -1;
 			}
 			printNodeInfo (nodeinfo);
+		}
+		break;
+		
+		case NODELIST: {
+			printNodeList();
 		}
 		break;
 		
