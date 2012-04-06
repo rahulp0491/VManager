@@ -7,38 +7,74 @@
 #include <string.h>
 #include "definitions.h"
 
-virConnectPtr conn;
-pthread_t domainThread [MaxNumThreads];
-virDomainPtr dom [MaxNumThreads];
+struct connThreadStruct {
+	pthread_t connThread;
+	pthread_t domainThread [MaxNumDomains];
+}cThread[MaxNumConnections];
 
-int createDomain (int domainNum) {
+struct connStruct {
+	virConnectPtr conn;
+	virDomainPtr dom [MaxNumDomains];
+	int numGuestDomains;
+}connection[MaxNumConnections];
+
+
+int createDomain (int conNum) {
 	int rc;
-	rc = pthread_create (&domainThread[domainNum], NULL, manageDomain, (void *)domainNum);
+	int domainNum;
+	domainNum = getNextDomainThreadNum (conNum);
+	rc = pthread_create (&cThread[conNum].domainThread[domainNum], NULL, manageDomain, (void *)domainNum);
 	assert (rc == 0);
-	rc = pthread_join (domainThread[domainNum], NULL);
+	rc = pthread_join (cThread[conNum].domainThread[domainNum], NULL);
 	assert (rc == 0);
 	return 0;
 }
 
-int getNextDomain () {
-	return virConnectNumOfDomains(conn)+1;
+int getNextDomain (int conNum) {
+	return virConnectNumOfDomains(connection[conNum].conn)+1;
 }
 
-int getNextThreadNum () {
+int getNextDomainThreadNum (int conNum) {
 	int i;
-	for (i=0; i < MaxNumThreads; i++) {
-		if (dom [i] == NULL) {
+	for (i=0; i < MaxNumDomains; i++) {
+		if (connection[conNum].dom [i] == NULL) {
 			return i;
 		}
 	}
-	if (i == MaxNumThreads) {
+	if (i == MaxNumDomains) {
 		return -1;
 	}
 }
 
+int getNextConnThread () {
+	int i;
+	for (i=0; i < MaxNumConnections; i++) {
+		if (connection[i].conn == NULL) {
+			return i;
+		}
+	}
+	if (i == MaxNumConnections) {
+		return -1;
+	}
+}
+
+int isConnectionEstablished (char *hostname) {
+	int i;
+	for (i=0; i < MaxNumConnections; i++) {
+		if (connection[i].conn != NULL) {
+			printf ("host: %d\t%s\n",i, virConnectGetHostname (connection[i].conn));
+			if (!strcmp(virConnectGetHostname (connection[i].conn), hostname)) {
+				return i;
+			}
+		}
+	}
+	if (i == MaxNumConnections) {
+		return -1;
+	}
+}
 
 void *manageDomain (void *arg) {
-	int domainNum;
+	int domainNum, conNum, isret;
 	
 	domainNum = (int)arg;
 	printf ("Domain num: %d\n\n", domainNum);
@@ -52,18 +88,28 @@ void *manageDomain (void *arg) {
 		strcat (xmlConfig, line);
 	}
 // 	printf ("\n%s\n", xmlConfig);
-	dom [domainNum] = virDomainDefineXML (conn, xmlConfig);
-	if (!dom [domainNum]) {
+	printf ("Enter hostname: ");
+	scanf ("%s", line);
+	isret = isConnectionEstablished (line);
+	if (isret < 0) {
+		conNum = getNextConnThread();
+		createConnection (conNum);
+	}
+	else {
+		conNum = isret;
+	}
+	connection[conNum].dom[domainNum] = virDomainDefineXML (connection[conNum].conn, xmlConfig);
+	if (!connection[conNum].dom[domainNum]) {
 		fprintf(stderr, "Domain definition failed\n\n");
 		return NULL;
 	}
-	if (virDomainCreate(dom [domainNum]) < 0) {
-		virDomainFree(dom [domainNum]);
+	if (virDomainCreate(connection[conNum].dom[domainNum]) < 0) {
+		virDomainFree(connection[conNum].dom[domainNum]);
 		fprintf(stderr, "Cannot boot guest\n\n");
 		return NULL;
 	}
 	fprintf(stderr, "Guest has booted\n\n");
-	virDomainFree(dom [domainNum]);
+	virDomainFree(connection[conNum].dom[domainNum]);
 
 	return NULL;
 }
@@ -95,51 +141,104 @@ int assignNum (char *input) {
 		return NUMDOMAIN;
 }
 
+int createConnection (int conNum) {
+	int rc;
+	rc = pthread_create (&cThread[conNum].connThread, NULL, manageConnections, (void *)conNum);
+	printf ("conThread: %d\n", conNum);
+	assert (rc == 0);
+	rc = pthread_join (cThread[conNum].connThread, NULL);
+	assert (rc == 0);
+	return 0;
+}
+
+void *manageConnections (void *arg) {
+	int conNum;
+	char uri[50];
+	printf ("Enter URI: ");
+	scanf ("%s", uri);
+	conNum = (int)arg;
+	connection[conNum].conn = virConnectOpen (uri);
+	if (connection[conNum].conn == NULL) {
+		fprintf (stderr, "Failed to open connection to %s\n\n", uri);
+		return NULL;
+	}
+	printf ("Connection to %s established\n\n", uri);
+}
+
 int handleInput (int input) {
 	switch (input) {
 		case CONNECT: {
-			char uri[50];
-			printf ("Enter URI: ");
-			scanf ("%s", uri);
-			conn = virConnectOpen ("qemu:///session");
-			if (conn == NULL) {
-				fprintf (stderr, "Failed to open connection to qemu:///session\n\n");
-				return -1;
-			}
-			printf ("Connection to qemu:///session established\n\n");
+			int conNum = getNextConnThread ();
+			createConnection (conNum);
 		}
 		break;
 		
 		case CLOSECON: {
-			if (virConnectClose (conn) < 0) {
-				fprintf (stderr, "Failed to close connection to qemu:///session\n");
+			int isret, conNum;
+			char line [50];
+			printf ("Enter hostname: ");
+			scanf ("%s", line);
+			isret = isConnectionEstablished (line);
+			if (isret >= 0) {
+				conNum = isret;
+				strcpy (line, virConnectGetHostname (connection[conNum].conn));
+			}
+			else {
+				fprintf (stderr, "Invalid connection\n");
 				return -1;
 			}
-			printf ("Connection to qemu:///session closed\n\n");
+			if (virConnectClose (connection[conNum].conn) < 0) {
+				fprintf (stderr, "Failed to close connection to %s\n", line);
+				return -1;
+			}
+			printf ("Connection to %s closed\n\n", line);
 		}
 		break;
 		
 		case NUMDOMAIN: {
-			int numDomains;
-			numDomains = virConnectNumOfDomains (conn);
-			printf ("Total number of domains in the host: %d\n\n", numDomains);
+			int numDomains, isret, conNum;
+			char hostname [50];
+			printf ("Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+				strcpy (hostname, virConnectGetHostname (connection[conNum].conn));
+			}
+			else {
+				fprintf (stderr, "Invalid connection\n");
+				return -1;
+			}
+			numDomains = virConnectNumOfDomains (connection[conNum].conn);
+			printf ("Total number of domains in the host %s: %d\n\n",hostname, numDomains);
 		}
 		break;
 		
 		case CREATEDOM: {
-			int nextdomnum;
-			nextdomnum = getNextDomain ();
-			createDomain (nextdomnum);
+			int isret, conNum;
+			char hostname [50];
+			printf ("Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+// 				strcpy (hostname, virConnectGetHostname (connection[conNum].conn));
+			}
+			else {
+				fprintf (stderr, "Invalid connection\n");
+				return -1;
+			}
+			createDomain (conNum);
 		}
 		break;
 		
 		case SHUTDOWN: {
 			printf ("Enter domain name: ");
 			char domName [20];
-			int ret;
+			int ret, conNum;
 			scanf ("%s", domName);
 			virDomainPtr dom;
-			dom = virDomainLookupByName (conn, domName);
+			dom = virDomainLookupByName (connection[conNum].conn, domName);
 			ret = virDomainShutdown(dom);
 			if (ret != 0) {
 				fprintf (stderr, "Error: Cannot shutdown domain object\n\n");
