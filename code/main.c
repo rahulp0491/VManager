@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <assert.h>
 #include <string.h>
-#include "handler.h"
 #include "definitions.h"
 
 
