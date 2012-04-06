@@ -1,7 +1,7 @@
-#define MaxNumThreads 10
+#define MaxNumDomains 10
 #define MaxConfigSize 10000
 #define MaxFileName 100
-#define MAxGuestDomains 5
+#define MaxNumConnections 10
 
 #define CONNECT 1
 #define CLOSECON 2
@@ -18,7 +18,11 @@
 
 int assignNum (char *input);
 int handleInput (int input);
-int getNextThreadNum ();
-int createDomain (int domainNum);
-int getNextDomain ();
+int getNextDomainThreadNum (int conNum);
+int createDomain (int conNum);
+int getNextDomain (int conNum);
 void *manageDomain (void *arg);
+int createConnection (int conNum);
+void *manageConnections (void *arg);
+int isConnectionEstablished (char *hostname);
+int getNextConnThread ();
