@@ -13,7 +13,7 @@ int main (int argc, char *argv[]) {
 	char input [100];
 	int inputNum;
 	while (1) {
-		printf ("VManager-># ");
+		printf ("VManager # ");
 		scanf("%s", input);
 		if (!strcmp (input, "quit")) 
 			return 0;
