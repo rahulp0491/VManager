@@ -1,3 +1,7 @@
+/*
+ * handler.c
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -6,6 +10,10 @@
 #include <assert.h>
 #include <string.h>
 #include "definitions.h"
+
+int globalConHandler;
+
+char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo","nodelist", "nodecap"};
 
 struct connThreadStruct {
 	pthread_t connThread;
@@ -22,7 +30,7 @@ struct connStruct {
 
 void printNodeList () {
 	int i;
-	for (i=0; i<MaxNumConnections; i++) {
+	for (i=0; i < MaxNumConnections; i++) {
 		if (connection[i].isconnected != 0) {
 			fprintf (stdout, "%s\n", virConnectGetHostname (connection[i].conn));
 		}
@@ -34,6 +42,7 @@ int createDomain (int conNum) {
 	int rc;
 	int domainNum;
 	domainNum = getNextDomainThreadNum (conNum);
+	globalConHandler = conNum;
 	rc = pthread_create (&cThread[conNum].domainThread[domainNum], NULL, manageDomain, (void *)domainNum);
 	assert (rc == 0);
 	rc = pthread_join (cThread[conNum].domainThread[domainNum], NULL);
@@ -78,30 +87,18 @@ int isConnectionEstablished (char *hostname) {
 }
 
 void *manageDomain (void *arg) {
-	int domainNum, conNum, isret;
-	
+	int domainNum, conNum;
+	conNum = globalConHandler;
 	domainNum = (int)arg;
 	printf ("Domain num: %d\n\n", domainNum);
 	char line[100];
 	char configFileName[MaxFileName], xmlConfig [MaxConfigSize];
-	printf ("Specify XML config file name: ");
+	printf ("XML config file name: ");
 	scanf ("%s", configFileName);
 	FILE *fp;
 	fp = fopen (configFileName, "r");
 	while (fgets(line, 100, fp) != NULL) {
 		strcat (xmlConfig, line);
-	}
-// 	printf ("\n%s\n", xmlConfig);
-	printf ("Enter hostname: ");
-	scanf ("%s", line);
-	isret = isConnectionEstablished (line);
-	if (isret < 0) {
-		conNum = getNextConnThread();
-		createConnection (conNum);
-		virConnectRef (connection[conNum].conn);
-	}
-	else {
-		conNum = isret;
 	}
 	connection[conNum].dom[domainNum] = virDomainDefineXML (connection[conNum].conn, xmlConfig);
 	virConnectRef (connection[conNum].conn);
@@ -114,49 +111,23 @@ void *manageDomain (void *arg) {
 		fprintf(stderr, "Error: Cannot boot guest\n\n");
 		return NULL;
 	}
-	fprintf(stderr, "Guest has booted\n\n");
+	fprintf(stdout, "Guest has booted\n\n");
 	virDomainFree(connection[conNum].dom[domainNum]);
 
 	return NULL;
 }
 
 int assignNum (char *input) {
-	if (!strcmp (input, "connect")) 
-		return CONNECT;
-	else if (!strcmp (input, "close"))
-		return CLOSECON;
-	else if (!strcmp (input, "dumpxml"))
-		return DUMPXML;
-	else if (!strcmp (input, "createdomain"))
-		return CREATEDOM;
-	else if (!strcmp (input, "suspend"))
-		return SUSPEND;
-	else if (!strcmp (input, "resume"))
-		return RESUME;
-	else if (!strcmp (input, "save"))
-		return SAVE;
-	else if (!strcmp (input, "restore"))
-		return RESTORE;
-	else if (!strcmp (input, "shutdown"))
-		return SHUTDOWN;
-	else if (!strcmp (input, "reboot"))
-		return REBOOT;
-	else if (!strcmp (input, "destroy"))
-		return DESTROY;
-	else if (!strcmp (input, "numofdomains"))
-		return NUMDOMAIN;
-	else if (!strcmp (input, "nodeinfo"))
-		return NODEINFO;
-	else if (!strcmp (input, "nodelist"))
-		return NODELIST;
-	else 
-		return -1;
-}
+	int i=0;
+	while(i < NumOfInputOptions)
+	 	if (!strcmp(input, inputOptions[i++]))
+	 		return i;
+	return -1;
+} 
 
 int createConnection (int conNum) {
 	int rc;
 	rc = pthread_create (&cThread[conNum].connThread, NULL, manageConnections, (void *)conNum);
-// 	printf ("conThread: %d\n", conNum);
 	assert (rc == 0);
 	rc = pthread_join (cThread[conNum].connThread, NULL);
 	assert (rc == 0);
@@ -166,7 +137,7 @@ int createConnection (int conNum) {
 void *manageConnections (void *arg) {
 	int conNum;
 	char uri[50];
-	printf ("Enter URI: ");
+	fprintf (stdout, "Enter URI: ");
 	scanf ("%s", uri);
 	conNum = (int)arg;
 	connection[conNum].conn = virConnectOpen (uri);
@@ -174,9 +145,8 @@ void *manageConnections (void *arg) {
 		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
 		return NULL;
 	}
-// 	virConnectRef (connection[conNum].conn);
 	connection[conNum].isconnected = 1;
-	printf ("Connection to %s established\n\n", uri);
+	fprintf (stdout, "Connection to %s established\n\n", uri);
 	return NULL;
 }
 
@@ -202,7 +172,7 @@ int handleInput (int input) {
 		case CLOSECON: {
 			int isret, conNum;
 			char line [50];
-			printf ("Enter hostname: ");
+			fprintf (stdout, "Enter hostname: ");
 			scanf ("%s", line);
 			isret = isConnectionEstablished (line);
 			if (isret >= 0) {
@@ -218,14 +188,14 @@ int handleInput (int input) {
 				return -1;
 			}
 			connection[conNum].isconnected = 0;
-			printf ("Connection to %s closed\n\n", line);
+			fprintf (stdout, "Connection to %s closed\n\n", line);
 		}
 		break;
 		
 		case NUMDOMAIN: {
 			int numDomains, isret, conNum;
 			char hostname [50];
-			printf ("Enter hostname: ");
+			fprintf (stdout, "Enter hostname: ");
 			scanf ("%s", hostname);
 			isret = isConnectionEstablished (hostname);
 			if (isret >= 0) {
@@ -237,14 +207,14 @@ int handleInput (int input) {
 				return -1;
 			}
 			numDomains = virConnectNumOfDomains (connection[conNum].conn);
-			printf ("Total number of domains in the host %s: %d\n\n",hostname, numDomains);
+			fprintf (stdout, "Total number of domains in the host %s: %d\n\n",hostname, numDomains);
 		}
 		break;
 		
 		case CREATEDOM: {
 			int isret, conNum;
 			char hostname [50];
-			printf ("Enter hostname: ");
+			fprintf (stdout, "Enter hostname: ");
 			scanf ("%s", hostname);
 			isret = isConnectionEstablished (hostname);
 			if (isret >= 0) {
@@ -259,12 +229,12 @@ int handleInput (int input) {
 		break;
 		
 		case SHUTDOWN: {
-			printf ("Enter domain name: ");
+			fprintf (stdout, "Enter domain name: ");
 			char domName [20];
 			int isret, conNum;
 			scanf ("%s", domName);
 			char hostname [50];
-			printf ("Enter hostname: ");
+			fprintf (stdout, "Enter hostname: ");
 			scanf ("%s", hostname);
 			isret = isConnectionEstablished (hostname);
 			if (isret >= 0) {
@@ -292,7 +262,7 @@ int handleInput (int input) {
 		case NODEINFO: {
 			int isret, conNum;
 			char hostname [50];
-			printf ("Enter hostname: ");
+			fprintf (stdout, "Enter hostname: ");
 			scanf ("%s", hostname);
 			isret = isConnectionEstablished (hostname);
 			if (isret >= 0) {
@@ -314,6 +284,50 @@ int handleInput (int input) {
 		
 		case NODELIST: {
 			printNodeList();
+		}
+		break;
+		
+		case NODECAP: {
+			int isret, conNum;
+			char hostname [50], *caps;
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection\n\n");
+				return -1;
+			}
+			caps = virConnectGetCapabilities (connection[conNum].conn);
+			fprintf (stdout, "%s\n\n", caps);
+		}
+		break;
+		
+		case DUMPXML: {
+			int isret, conNum;
+			char name [50], *xmldump;
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection\n\n");
+				return -1;
+			}
+			fprintf (stdout, "Enter Domain name: ");
+			scanf ("%s", name);
+			virDomainPtr dom;
+			dom = virDomainLookupByName (connection[conNum].conn, name);
+			if (dom == NULL) {
+				fprintf (stdout, "Error: Invalid domain\n\n");
+				return -1;
+			}
+ 			xmldump = virDomainGetXMLDesc (dom, VIR_DOMAIN_XML_SECURE | VIR_DOMAIN_XML_INACTIVE | VIR_DOMAIN_XML_UPDATE_CPU);
+			fprintf (stdout, "%s\n\n", xmldump);
 		}
 		break;
 		
