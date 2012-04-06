@@ -2,19 +2,28 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <libvirt/libvirt.h>			// INCLUDING THE LIBVIRT LIBRARY
-#include "vm_functions.h"
+
+virConnectPtr conn;
 
 /* -MAIN- */
 int main (int argc, char *argv[]) {
-	virConnectPtr conn;			// CREATING AN OBJECT USING virConnectPtr HANDLER
-	if (argc != 2) 
-		vm_error ("Insufficient arguments");
-	char *uri = argv[1];
-	conn = virConnectOpen (uri);
-	if (conn == NULL)
-		fprintf (stderr, "ERROR %d: Failed to open connection to %s", errno, uri);
-	vm_getcapabilities (conn);
-	virConnectClose (conn);
+	
+	conn = virConnectOpen ("qemu:///session");
+	if (conn == NULL) {
+		fprintf (stderr, "Failed to open connection to qemu:///session\n");
+		return -1;
+	}
+	printf ("Connection to qemu:///session established\n");
+
+
+	char *s;
+	s = virConnectGetCapabilities (conn);
+	printf ("Capabilities:\n%s\n", s);
+	if (virConnectClose (conn) != 0) {
+		fprintf (stderr, "Cannot close connection to qemu:///session\n");
+		return -1;
+	}
+	printf ("Connection to qemu:///session closed\n");
 	return 0;
 }
 
