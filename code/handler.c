@@ -39,7 +39,17 @@ void printNodeList () {
 			fprintf (stdout, "%d\t%s\n",i+1, virConnectGetHostname (connection[i].conn));
 		}
 	}
-	printf ("\n");
+	fprintf (stdout, "\n");
+}
+
+void printDomList (int conNum) {
+	int i;
+	for (i=0; i < MaxNumDomains; i++) {
+		if (connection[conNum].domain[i].iscreated != 0) {
+			fprintf (stdout, "%d\t%s\n", i+1, virDomainGetName (connection[conNum].domain[i].dom));
+		}
+	}
+	fprintf (stdout, "\n");
 }
 
 int createDomain (int conNum) {
@@ -556,6 +566,23 @@ int handleInput (int input) {
 				return -1;
 			}
 			printDomInfo (dominfo);
+		}
+		break;
+		
+		case DOMLIST: {
+			int isret, conNum;
+			char name[50]; 
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			printDomList(conNum);
 		}
 		break;
 		
