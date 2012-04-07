@@ -64,10 +64,6 @@ int createDomain (int conNum) {
 	return 0;
 }
 
-int getNextDomain (int conNum) {
-	return virConnectNumOfDomains(connection[conNum].conn)+1;
-}
-
 int getNextDomainThreadNum (int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
