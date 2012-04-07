@@ -14,7 +14,7 @@
 
 int globalConHandler;
 
-char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist"};
+char inputOptions[][NumOfInputOptions] = {"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist"};
 
 struct connThreadStruct {
 	pthread_t domainThread [MaxNumDomains];
