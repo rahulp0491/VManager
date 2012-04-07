@@ -17,7 +17,6 @@ int globalConHandler;
 char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo", "nodelist", "nodecap"};
 
 struct connThreadStruct {
-	pthread_t connThread;
 	pthread_t domainThread [MaxNumDomains];
 }cThread[MaxNumConnections];
 
@@ -33,7 +32,7 @@ void printNodeList () {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
 		if (connection[i].isconnected != 0) {
-			fprintf (stdout, "%s\n", virConnectGetHostname (connection[i].conn));
+			fprintf (stdout, "%d\t%s\n",i+1, virConnectGetHostname (connection[i].conn));
 		}
 	}
 	printf ("\n");
@@ -79,6 +78,7 @@ int isConnectionEstablished (char *hostname) {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
 		if (connection[i].isconnected == 1) {
+			printf ("%d\n", connection[i].isconnected);
 			if (!strcmp(virConnectGetHostname (connection[i].conn), hostname)) {
 				return i;
 			}
@@ -125,28 +125,17 @@ int assignNum (char *input) {
 } 
 
 int createConnection (int conNum) {
-	int rc;
-	rc = pthread_create (&cThread[conNum].connThread, NULL, manageConnections, (void *)conNum);
-	assert (rc == 0);
-	rc = pthread_join (cThread[conNum].connThread, NULL);
-	assert (rc == 0);
-	return 0;
-}
-
-void *manageConnections (void *arg) {
-	int conNum;
 	char uri[50];
 	fprintf (stdout, "Enter URI: ");
 	scanf ("%s", uri);
-	conNum = (int)arg;
 	connection[conNum].conn = virConnectOpen (uri);
 	if (connection[conNum].conn == NULL) {
 		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
-		return NULL;
+		return -1;
 	}
 	connection[conNum].isconnected = 1;
 	fprintf (stdout, "Connection to %s established\n\n", uri);
-	return NULL;
+	return 0;
 }
 
 void printNodeInfo (virNodeInfo nodeinfo) {
