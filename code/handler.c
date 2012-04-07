@@ -14,19 +14,23 @@
 
 int globalConHandler;
 
-char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo", "nodelist", "nodecap", "load"};
+char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist"};
 
 struct connThreadStruct {
 	pthread_t domainThread [MaxNumDomains];
 }cThread[MaxNumConnections];
 
+struct domStruct {
+	virDomainPtr dom;
+	int iscreated;
+};
+
 struct connStruct {
 	virConnectPtr conn;
 	int isconnected;
-	virDomainPtr dom [MaxNumDomains];
+	struct domStruct domain [MaxNumDomains];
 	int numGuestDomains;
 }connection[MaxNumConnections];
-
 
 void printNodeList () {
 	int i;
@@ -57,7 +61,7 @@ int getNextDomain (int conNum) {
 int getNextDomainThreadNum (int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
-		if (connection[conNum].dom [i] == NULL) {
+		if (connection[conNum].domain[i].dom == NULL) {
 			return i;
 		}
 	}
@@ -90,7 +94,6 @@ void *manageDomain (void *arg) {
 	int domainNum, conNum;
 	conNum = globalConHandler;
 	domainNum = (int)arg;
-	printf ("Domain num: %d\n\n", domainNum);
 	char line[100];
 	char configFileName[MaxFileName], xmlConfig [MaxConfigSize];
 	printf ("XML config file name: ");
@@ -100,14 +103,15 @@ void *manageDomain (void *arg) {
 	while (fgets(line, 100, fp) != NULL) {
 		strcat (xmlConfig, line);
 	}
-	connection[conNum].dom[domainNum] = virDomainDefineXML (connection[conNum].conn, xmlConfig);
+	connection[conNum].domain[domainNum].dom = virDomainDefineXML (connection[conNum].conn, xmlConfig);
 	virConnectRef (connection[conNum].conn);
-	if (!connection[conNum].dom[domainNum]) {
+	connection[conNum].domain[domainNum].iscreated = 1;
+	if (!connection[conNum].domain[domainNum].dom) {
 		fprintf(stderr, "Error: Domain definition failed\n\n");
 		return NULL;
 	}
-	if (virDomainCreate(connection[conNum].dom[domainNum]) < 0) {
-		virDomainFree(connection[conNum].dom[domainNum]);
+	if (virDomainCreate(connection[conNum].domain[domainNum].dom) < 0) {
+		virDomainFree(connection[conNum].domain[domainNum].dom);
 		fprintf(stderr, "Error: Cannot boot guest\n\n");
 		return NULL;
 	}
@@ -159,6 +163,22 @@ int connectionWithSameURI (char *uri) {
 			if (!strcmp(virConnectGetURI(connection[i].conn), uri)) {
 				return i;
 			}
+	}
+	return -1;
+}
+
+void printDomInfo (virDomainInfoPtr dominfo) {
+	fprintf (stdout, "Domain State: %c\n", dominfo->state);
+}
+
+int isDomCreated (char *domName, int conNum) {
+	int i;
+	for (i=0; i < MaxNumDomains; i++) {
+		if (connection[conNum].domain[i].iscreated != 0) {
+			if (!strcmp (virDomainGetName (connection[conNum].domain[i].dom), domName)) {
+				return i;
+			}
+		}
 	}
 	return -1;
 }
@@ -246,18 +266,26 @@ int handleInput (int input) {
 				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
-			virDomainPtr dom;
-			dom = virDomainLookupByName (connection[conNum].conn, domName);
-			isret = virDomainShutdown(dom);
+// 			virDomainPtr dom;
+			isret = isDomCreated (domName, conNum);
+			if (isret < 0) {
+				fprintf (stderr, "Error: Domain does not exists\n\n");
+				return -1;
+			}
+			connection[conNum].domain[isret].iscreated = 0;
+// 			dom = virDomainLookupByName (connection[conNum].conn, domName);
+			isret = virDomainShutdown(connection[conNum].domain[isret].dom);
 			virConnectClose (connection[conNum].conn);
 			if (isret != 0) {
 				fprintf (stderr, "Error: Cannot shutdown domain object\n\n");
 				return -1;
 			}
-			if (virDomainFree (dom) != 0){
+			fprintf (stdout, "Domain %s shutdown on %s\n\n", domName, hostname);
+			if (virDomainFree (connection[conNum].domain[isret].dom) != 0) {
 				fprintf (stderr, "Error: Cannot free domain datastructure\n\n");
 				return -1;
 			}
+			fprintf (stdout, "All datastructure related to domain %s freed on %s\n\n", domName, hostname);
 		}
 		break;
 		
@@ -496,6 +524,38 @@ int handleInput (int input) {
 			}
 			isret = virConnectListNetworks (connection[conNum].conn, net, size);
 			fprintf (stdout, "Number of networks in %s: %d\n\n",name, isret);
+		}
+		break;
+		
+		case DOMINFO: {
+			int isret, conNum;
+			char name[50]; 
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Enter Domain name: ");
+			scanf ("%s", name);
+			virDomainPtr dom;
+			dom = virDomainLookupByName (connection[conNum].conn, name);
+			if (dom == NULL) {
+				fprintf (stderr, "Error: Invalid domain %s\n\n", name);
+				return -1;
+			}
+			virDomainInfoPtr dominfo;
+			dominfo = malloc (sizeof (virDomainInfoPtr));
+			isret = virDomainGetInfo (dom, dominfo);
+			if (isret != 0) {
+				fprintf (stderr, "Error: Cannot get info about domain %s\n\n", name);
+				return -1;
+			}
+			printDomInfo (dominfo);
 		}
 		break;
 		
