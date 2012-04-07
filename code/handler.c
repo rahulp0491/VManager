@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>
 #include "definitions.h"
 
 int globalConHandler;
