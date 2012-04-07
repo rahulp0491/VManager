@@ -128,6 +128,10 @@ int createConnection (int conNum) {
 	char uri[50];
 	fprintf (stdout, "Enter URI: ");
 	scanf ("%s", uri);
+	if (connectionWithSameURI (uri) != -1) {
+		fprintf (stderr, "Error: Connection to %s already exists\n\n", uri);
+		return -1;
+	}
 	connection[conNum].conn = virConnectOpen (uri);
 	if (connection[conNum].conn == NULL) {
 		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
@@ -147,6 +151,17 @@ void printNodeInfo (virNodeInfo nodeinfo) {
 	fprintf (stdout, "Number of CPU sockets: %u\n", nodeinfo.sockets);
 	fprintf (stdout, "Number of CPU cores per socket: %u\n", nodeinfo.cores);
 	fprintf (stdout, "Number of CPU threads per socket: %u\n\n", nodeinfo.threads);
+}
+
+int connectionWithSameURI (char *uri) {
+	int i;
+	for (i=0; i < MaxNumConnections; i++) {
+		if (connection[i].isconnected == 1)
+			if (!strcmp(virConnectGetURI(connection[i].conn), uri)) {
+				return i;
+			}
+	}
+	return -1;
 }
 
 int handleInput (int input) {
@@ -379,6 +394,30 @@ int handleInput (int input) {
 				return -1;
 			}
 			fprintf (stdout, "Domain memory saved\n\n");
+		}
+		break;
+		
+		case RESTORE: {
+			int isret, conNum;
+			char name[50];
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Enter filename for restoring: ");
+			scanf ("%s", name);
+			isret = virDomainRestore (connection[conNum].conn, name);
+			if (isret < 0) {
+				fprintf (stderr, "Error: Cannot restore domain memory\n\n");
+				return -1;
+			}
+			fprintf (stdout, "Domain memory restored from %s to %s\n\n", name, virConnectGetHostname (connection[conNum].conn));
 		}
 		break;
 		
