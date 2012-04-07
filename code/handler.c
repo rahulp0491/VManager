@@ -340,7 +340,7 @@ int handleInput (int input) {
 				conNum = isret;
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
 				return -1;
 			}
 			fprintf (stdout, "Enter Domain name: ");
@@ -348,7 +348,7 @@ int handleInput (int input) {
 			virDomainPtr dom;
 			dom = virDomainLookupByName (connection[conNum].conn, name);
 			if (dom == NULL) {
-				fprintf (stderr, "Error: Invalid domain\n\n");
+				fprintf (stderr, "Error: Invalid domain %s\n\n", name);
 				return -1;
 			}
 			
@@ -358,6 +358,38 @@ int handleInput (int input) {
 				return -1;
 			}
 			fprintf (stdout, "Guest domain %s ready for reboot\n\n", name);
+		}
+		break;
+		
+		case SAVE: {
+			int isret, conNum;
+			char name[50];
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Enter Domain name: ");
+			scanf ("%s", name);
+			virDomainPtr dom;
+			dom = virDomainLookupByName (connection[conNum].conn, name);
+			if (dom == NULL) {
+				fprintf (stderr, "Error: Invalid domain %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Enter filename to be saved as: ");
+			scanf ("%s", name);
+			isret = virDomainSave (dom, name);
+			if (isret < 0) {
+				fprintf (stderr, "Error: Cannot save domain memory\n\n");
+				return -1;
+			}
+			fprintf (stdout, "Domain memory saved\n\n");
 		}
 		break;
 		
