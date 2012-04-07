@@ -113,8 +113,6 @@ void *manageDomain (void *arg) {
 		return NULL;
 	}
 	fprintf(stdout, "Guest has booted\n\n");
-	virDomainFree(connection[conNum].dom[domainNum]);
-
 	return NULL;
 }
 
