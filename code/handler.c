@@ -421,6 +421,36 @@ int handleInput (int input) {
 		}
 		break;
 		
+		case SUSPEND: {
+			int isret, conNum;
+			char name[50];
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Enter Domain name: ");
+			scanf ("%s", name);
+			virDomainPtr dom;
+			dom = virDomainLookupByName (connection[conNum].conn, name);
+			if (dom == NULL) {
+				fprintf (stderr, "Error: Invalid domain %s\n\n", name);
+				return -1;
+			}
+			isret = virDomainSuspend (dom);
+			if (isret != 0) {
+				fprintf (stderr, "Error: Domain %s cannot be suspended, check privileges\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Domain %s suspended. Memory still allocated\n\n", name);
+		}
+		break;
+		
 		default:
 			fprintf (stderr, "Error: Invalid input\n\n");
 		break;
