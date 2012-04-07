@@ -13,7 +13,7 @@
 
 int globalConHandler;
 
-char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo","nodelist", "nodecap"};
+char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo", "nodelist", "nodecap"};
 
 struct connThreadStruct {
 	pthread_t connThread;
@@ -180,7 +180,7 @@ int handleInput (int input) {
 				strcpy (line, virConnectGetHostname (connection[conNum].conn));
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", line);
 				return -1;
 			}
 			if (virConnectClose (connection[conNum].conn) < 0) {
@@ -203,7 +203,7 @@ int handleInput (int input) {
 				strcpy (hostname, virConnectGetHostname (connection[conNum].conn));
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
 			numDomains = virConnectNumOfDomains (connection[conNum].conn);
@@ -221,7 +221,7 @@ int handleInput (int input) {
 				conNum = isret;
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
 			createDomain (conNum);
@@ -241,7 +241,7 @@ int handleInput (int input) {
 				conNum = isret;
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
 			virDomainPtr dom;
@@ -269,7 +269,7 @@ int handleInput (int input) {
 				conNum = isret;
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
 			virNodeInfo nodeinfo;
@@ -297,7 +297,7 @@ int handleInput (int input) {
 				conNum = isret;
 			}
 			else {
-				fprintf (stderr, "Error: Invalid connection\n\n");
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
 			caps = virConnectGetCapabilities (connection[conNum].conn);
@@ -315,6 +315,32 @@ int handleInput (int input) {
 				conNum = isret;
 			}
 			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Enter Domain name: ");
+			scanf ("%s", name);
+			virDomainPtr dom;
+			dom = virDomainLookupByName (connection[conNum].conn, name);
+			if (dom == NULL) {
+				fprintf (stdout, "Error: Invalid domain %s\n\n", name);
+				return -1;
+			}
+ 			xmldump = virDomainGetXMLDesc (dom, VIR_DOMAIN_XML_SECURE | VIR_DOMAIN_XML_INACTIVE | VIR_DOMAIN_XML_UPDATE_CPU);
+			fprintf (stdout, "%s\n\n", xmldump);
+		}
+		break;
+		
+		case REBOOT: {
+			int isret, conNum;
+			char name[50];
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
 				fprintf (stderr, "Error: Invalid connection\n\n");
 				return -1;
 			}
@@ -323,11 +349,16 @@ int handleInput (int input) {
 			virDomainPtr dom;
 			dom = virDomainLookupByName (connection[conNum].conn, name);
 			if (dom == NULL) {
-				fprintf (stdout, "Error: Invalid domain\n\n");
+				fprintf (stderr, "Error: Invalid domain\n\n");
 				return -1;
 			}
- 			xmldump = virDomainGetXMLDesc (dom, VIR_DOMAIN_XML_SECURE | VIR_DOMAIN_XML_INACTIVE | VIR_DOMAIN_XML_UPDATE_CPU);
-			fprintf (stdout, "%s\n\n", xmldump);
+			
+			isret = virDomainReboot (dom, VIR_DOMAIN_REBOOT_DEFAULT);
+			if (isret < 0) {
+				fprintf (stderr, "Error: Cannot boot domain %s\n\n", name);
+				return -1;
+			}
+			fprintf (stdout, "Guest domain %s ready for reboot\n\n", name);
 		}
 		break;
 		
