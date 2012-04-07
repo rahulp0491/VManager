@@ -495,7 +495,7 @@ int handleInput (int input) {
 				return -1;
 			}
 			isret = virConnectListNetworks (connection[conNum].conn, net, size);
-			printf ("Number of networks in %s: %d\n\n",name, isret);
+			fprintf (stdout, "Number of networks in %s: %d\n\n",name, isret);
 		}
 		break;
 		
