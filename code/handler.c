@@ -14,7 +14,7 @@
 
 int globalConHandler;
 
-char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo", "nodelist", "nodecap"};
+char inputOptions[][NumOfInputOptions]={"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "destroy", "numdomain", "nodeinfo", "nodelist", "nodecap", "load"};
 
 struct connThreadStruct {
 	pthread_t domainThread [MaxNumDomains];
@@ -78,7 +78,6 @@ int isConnectionEstablished (char *hostname) {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
 		if (connection[i].isconnected == 1) {
-			printf ("%d\n", connection[i].isconnected);
 			if (!strcmp(virConnectGetHostname (connection[i].conn), hostname)) {
 				return i;
 			}
@@ -478,6 +477,25 @@ int handleInput (int input) {
 				return -1;
 			}
 			fprintf (stdout, "Domain %s restored. Hypervisor resources available\n\n", name);
+		}
+		break;
+		
+		case LOAD: {
+			int isret, conNum;
+			char name[50], *net[30]; 
+			int size = 30;
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", name);
+			isret = isConnectionEstablished (name);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", name);
+				return -1;
+			}
+			isret = virConnectListNetworks (connection[conNum].conn, net, size);
+			printf ("Number of networks in %s: %d\n\n",name, isret);
 		}
 		break;
 		
