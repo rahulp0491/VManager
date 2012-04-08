@@ -339,7 +339,7 @@ int handleInput (int input) {
 			fprintf (stdout, "Domain %s destroy on %s\n\n", domName, hostname);
 		}
 		break;
-		
+	
 		case NODEINFO: {
 			int isret, conNum;
 			char hostname [50];
