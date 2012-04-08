@@ -22,6 +22,7 @@ struct connThreadStruct {
 struct domStruct {
 	virDomainPtr dom;
 	int iscreated;
+	int isrunning;
 };
 
 struct connStruct {
@@ -46,7 +47,7 @@ void printNodeList () {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
 		if (connection[i].isconnected != 0) {
-			fprintf (stdout, "%d\t%s\n",i+1, virConnectGetHostname (connection[i].conn));
+			fprintf (stdout, "%s\t\t%s\n",virConnectGetURI (connection[i].conn), virConnectGetHostname (connection[i].conn));
 		}
 	}
 	fprintf (stdout, "\n");
@@ -76,7 +77,7 @@ void createDomain (int conNum) {
 int getNextDomainThreadNum (int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
-		if (connection[conNum].domain[i].dom == NULL) {
+		if (connection[conNum].domain[i].iscreated == 0) {
 			return i;
 		}
 	}
@@ -124,16 +125,18 @@ void *manageDomain (void *arg) {
 	}
 	connection[conNum].domain[domainNum].dom = virDomainDefineXML (connection[conNum].conn, xmlConfig);
 	virConnectRef (connection[conNum].conn);
-	connection[conNum].domain[domainNum].iscreated = 1;
-	if (!connection[conNum].domain[domainNum].dom) {
+	
+	if (connection[conNum].domain[domainNum].dom == NULL) {
 		fprintf(stderr, "Error: Domain definition failed\n\n");
 		return NULL;
 	}
+	connection[conNum].domain[domainNum].iscreated = 1;
 	if (virDomainCreate(connection[conNum].domain[domainNum].dom) < 0) {
 		virDomainFree(connection[conNum].domain[domainNum].dom);
 		fprintf(stderr, "Error: Cannot boot guest\n\n");
 		return NULL;
 	}
+	connection[conNum].domain[domainNum].iscreated = 1;
 	fprintf(stdout, "Guest has booted\n\n");
 	return NULL;
 }
@@ -287,14 +290,12 @@ int handleInput (int input) {
 				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
-// 			virDomainPtr dom;
 			isret = isDomCreated (domName, conNum);
 			if (isret < 0) {
 				fprintf (stderr, "Error: Domain does not exists\n\n");
 				return -1;
 			}
 			connection[conNum].domain[isret].iscreated = 0;
-// 			dom = virDomainLookupByName (connection[conNum].conn, domName);
 			isret = virDomainShutdown(connection[conNum].domain[isret].dom);
 			virConnectClose (connection[conNum].conn);
 			if (isret != 0) {
@@ -406,7 +407,7 @@ int handleInput (int input) {
 			
 			isret = virDomainReboot (dom, VIR_DOMAIN_REBOOT_DEFAULT);
 			if (isret < 0) {
-				fprintf (stderr, "Error: Cannot boot domain %s\n\n", name);
+				fprintf (stderr, "Error: Cannot reboot domain %s\n\n", name);
 				return -1;
 			}
 			fprintf (stdout, "Guest domain %s ready for reboot\n\n", name);
