@@ -12,8 +12,6 @@
 #include <unistd.h>
 #include "definitions.h"
 
-int globalConHandler;
-
 char inputOptions[][NumOfInputOptions] = {"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist"};
 
 struct connThreadStruct {
@@ -52,7 +50,7 @@ void printDomList (int conNum) {
 	fprintf (stdout, "\n");
 }
 
-int createDomain (int conNum) {
+void createDomain (int conNum) {
 	int rc;
 	int domainNum;
 	domainNum = getNextDomainThreadNum (conNum);
@@ -61,7 +59,6 @@ int createDomain (int conNum) {
 	assert (rc == 0);
 	rc = pthread_join (cThread[conNum].domainThread[domainNum], NULL);
 	assert (rc == 0);
-	return 0;
 }
 
 int getNextDomainThreadNum (int conNum) {
@@ -133,22 +130,21 @@ int assignNum (char *input) {
 	return -1;
 } 
 
-int createConnection (int conNum) {
+void createConnection (int conNum) {
 	char uri[50];
 	fprintf (stdout, "Enter URI: ");
 	scanf ("%s", uri);
 	if (connectionWithSameURI (uri) != -1) {
 		fprintf (stderr, "Error: Connection to %s already exists\n\n", uri);
-		return -1;
+		return;
 	}
 	connection[conNum].conn = virConnectOpen (uri);
 	if (connection[conNum].conn == NULL) {
 		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
-		return -1;
+		return;
 	}
 	connection[conNum].isconnected = 1;
 	fprintf (stdout, "Connection to %s established\n\n", uri);
-	return 0;
 }
 
 void printNodeInfo (virNodeInfo nodeinfo) {

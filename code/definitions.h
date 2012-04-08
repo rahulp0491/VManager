@@ -24,12 +24,14 @@
 #define DOMLIST 17
 
 
+int globalConHandler;
+
 int assignNum (char *input);
 int handleInput (int input);
 int getNextDomainThreadNum (int conNum);
-int createDomain (int conNum);
+void createDomain (int conNum);
 void *manageDomain (void *arg);
-int createConnection (int conNum);
+void createConnection (int conNum);
 int isConnectionEstablished (char *hostname);
 int getNextConnThread ();
 void printNodeInfo (virNodeInfo nodeinfo);

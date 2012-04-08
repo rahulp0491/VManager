@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <string.h>
 #include "definitions.h"
-
+// #include <gtk/gtk.h>
 
 /* -MAIN- */
 int main (int argc, char *argv[]) {
@@ -15,7 +15,7 @@ int main (int argc, char *argv[]) {
 	while (1) {
 		printf ("VManager # ");
 		scanf("%s", input);
-		if (!strcmp (input, "quit")) 
+		if (!strcmp (input, "quit"))
 			return 0;
 		inputNum = assignNum (input);
 		handleInput (inputNum);
