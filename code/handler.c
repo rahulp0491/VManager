@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <libvirt/libvirt.h>		// INCLUDING THE LIBVIRT LIBRARY
+#include <libvirt/virterror.h>
 #include <pthread.h>
 #include <assert.h>
 #include <string.h>
@@ -29,6 +30,17 @@ struct connStruct {
 	struct domStruct domain [MaxNumDomains];
 	int numGuestDomains;
 }connection[MaxNumConnections];
+
+
+static void vmError (void *userdata, virErrorPtr err) {
+	fprintf (stderr, "\n--------------------------------------------------------------------\n");
+	fprintf (stderr, "Libvirt error on connection to %s\n", (char *)userdata);
+	fprintf (stderr, "--------------------------------------------------------------------\n");
+	fprintf (stderr, "Code: %d\n", err->code);
+	fprintf (stderr, "Domain: %d\n", err->domain);
+	fprintf (stderr, "Message: %s\n", err->message);
+	fprintf (stderr, "Level: %d\n", err->level);
+}
 
 void printNodeList () {
 	int i;
@@ -74,7 +86,7 @@ int getNextDomainThreadNum (int conNum) {
 int getNextConnThread () {
 	int i;
 	for (i=0; i < MaxNumConnections; i++) {
-		if (connection[i].conn == NULL) {
+		if (connection[i].isconnected == 0) {
 			return i;
 		}
 	}
@@ -103,6 +115,10 @@ void *manageDomain (void *arg) {
 	scanf ("%s", configFileName);
 	FILE *fp;
 	fp = fopen (configFileName, "r");
+	if (fp == NULL) {
+		fprintf(stderr, "Error: Invalid file\n\n");
+		return NULL;
+	}
 	while (fgets(line, 100, fp) != NULL) {
 		strcat (xmlConfig, line);
 	}
@@ -132,6 +148,7 @@ int assignNum (char *input) {
 
 void createConnection (int conNum) {
 	char uri[50];
+	char *hostname;
 	fprintf (stdout, "Enter URI: ");
 	scanf ("%s", uri);
 	if (connectionWithSameURI (uri) != -1) {
@@ -143,6 +160,8 @@ void createConnection (int conNum) {
 		fprintf (stderr, "Error: Failed to open connection to %s\n\n", uri);
 		return;
 	}
+	hostname = virConnectGetHostname (connection[conNum].conn);
+	virConnSetErrorFunc(connection[conNum].conn, (void *)hostname , vmError);
 	connection[conNum].isconnected = 1;
 	fprintf (stdout, "Connection to %s established\n\n", uri);
 }
