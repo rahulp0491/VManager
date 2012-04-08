@@ -11,9 +11,10 @@
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "definitions.h"
 
-char inputOptions[][NumOfInputOptions] = {"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist"};
+char inputOptions[][NumOfInputOptions] = {"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist", "destroy"};
 
 struct connThreadStruct {
 	pthread_t domainThread [MaxNumDomains];
@@ -112,6 +113,7 @@ void *manageDomain (void *arg) {
 	domainNum = (int)arg;
 	char line[100];
 	char configFileName[MaxFileName], xmlConfig [MaxConfigSize];
+	bzero (xmlConfig, MaxConfigSize);
 	printf ("XML config file name: ");
 	scanf ("%s", configFileName);
 	FILE *fp;
@@ -136,7 +138,7 @@ void *manageDomain (void *arg) {
 		fprintf(stderr, "Error: Cannot boot guest\n\n");
 		return NULL;
 	}
-	connection[conNum].domain[domainNum].iscreated = 1;
+	connection[conNum].domain[domainNum].isrunning = 1;
 	fprintf(stdout, "Guest has booted\n\n");
 	return NULL;
 }
@@ -292,22 +294,49 @@ int handleInput (int input) {
 			}
 			isret = isDomCreated (domName, conNum);
 			if (isret < 0) {
-				fprintf (stderr, "Error: Domain does not exists\n\n");
+				fprintf (stderr, "Error: Domain %s does not exists\n\n", domName);
 				return -1;
 			}
-			connection[conNum].domain[isret].iscreated = 0;
 			isret = virDomainShutdown(connection[conNum].domain[isret].dom);
 			virConnectClose (connection[conNum].conn);
 			if (isret != 0) {
 				fprintf (stderr, "Error: Cannot shutdown domain object\n\n");
 				return -1;
 			}
-			fprintf (stdout, "Domain %s shutdown on %s\n\n", domName, hostname);
-			if (virDomainFree (connection[conNum].domain[isret].dom) != 0) {
-				fprintf (stderr, "Error: Cannot free domain datastructure\n\n");
+			fprintf (stdout, "Domain %s ready for shutdown on %s\n\n", domName, hostname);
+		}
+		break;
+		
+		case DESTROY: {
+			fprintf (stdout, "Enter domain name: ");
+			char domName [20];
+			int isret, conNum;
+			scanf ("%s", domName);
+			char hostname [50];
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
 				return -1;
 			}
-			fprintf (stdout, "All datastructure related to domain %s freed on %s\n\n", domName, hostname);
+			isret = isDomCreated (domName, conNum);
+			if (isret < 0) {
+				fprintf (stderr, "Error: Domain %s does not exists\n\n", domName);
+				return -1;
+			}
+			connection[conNum].domain[isret].iscreated = 0;
+			connection[conNum].domain[isret].isrunning = 0;
+			isret = virDomainDestroy(connection[conNum].domain[isret].dom);
+			virConnectClose (connection[conNum].conn);
+			if (isret != 0) {
+				fprintf (stderr, "Error: Cannot destroy domain object\n\n");
+				return -1;
+			}
+			fprintf (stdout, "Domain %s destroy on %s\n\n", domName, hostname);
 		}
 		break;
 		
@@ -405,7 +434,7 @@ int handleInput (int input) {
 				return -1;
 			}
 			
-			isret = virDomainReboot (dom, VIR_DOMAIN_REBOOT_DEFAULT);
+			//isret = virDomainReboot (dom, VIR_DOMAIN_REBOOT_DEFAULT);
 			if (isret < 0) {
 				fprintf (stderr, "Error: Cannot reboot domain %s\n\n", name);
 				return -1;
