@@ -48,6 +48,5 @@ int isDomCreated (char *domName, int conNum);
 void printDomList (int conNum);
 void createDomain (int conNum, int flag);
 void *startDomain (void *arg);
-static void vmError (void *userdata, virErrorPtr err);
 int isDomainDefined (char *xml, int conNum);
 void printDomList (int conNum);
