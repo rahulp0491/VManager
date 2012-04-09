@@ -3,7 +3,7 @@
 #define MaxFileName 100
 #define MaxNumConnections 10
 
-#define NumOfInputOptions 17
+#define NumOfInputOptions 18
 
 #define CONNECT 1
 #define CLOSECON 2
@@ -22,6 +22,7 @@
 #define NODECAP 15
 #define LOAD 16
 #define DOMLIST 17
+#define DESTROY 18
 
 
 int globalConHandler;
