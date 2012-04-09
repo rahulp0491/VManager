@@ -1,6 +1,6 @@
 <domain type='qemu'>
-  <name>dom3</name>
-  <uuid>c7c5fcbd-cdaf-9455-926a-d65c16db1809</uuid>
+  <name>dom2</name>
+  <uuid>c7a5fcbd-cdaf-9455-926a-d65c16db1809</uuid>
   <memory>219200</memory>
   <currentMemory>219200</currentMemory>
   <vcpu>2</vcpu>
@@ -10,7 +10,7 @@
   </os>
   <devices>
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
-    <disk type='file' device='disk'>
+    <disk type='file' device='cdrom'>
       <source file='/home/delbin/VManager/code/ubuntu.iso'/>
       <target dev='hda'/>
     </disk>
