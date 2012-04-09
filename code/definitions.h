@@ -3,7 +3,10 @@
 #define MaxFileName 100
 #define MaxNumConnections 10
 
-#define NumOfInputOptions 18
+#define CREATE_THREAD 1
+#define START_THREAD 2
+
+#define NumOfInputOptions 20
 
 #define CONNECT 1
 #define CLOSECON 2
@@ -23,14 +26,16 @@
 #define LOAD 16
 #define DOMLIST 17
 #define DESTROY 18
+#define DEFINE 19
+#define START 20
 
 
 int globalConHandler;
+virDomainPtr globalDomainHandler;
 
 int assignNum (char *input);
 int handleInput (int input);
 int getNextDomainThreadNum (int conNum);
-void createDomain (int conNum);
 void *manageDomain (void *arg);
 void createConnection (int conNum);
 int isConnectionEstablished (char *hostname);
@@ -40,4 +45,9 @@ void printNodeList ();
 int connectionWithSameURI (char *uri);
 void printDomInfo (virDomainInfoPtr dominfo);
 int isDomCreated (char *domName, int conNum);
+void printDomList (int conNum);
+void createDomain (int conNum, int flag);
+void *startDomain (void *arg);
+static void vmError (void *userdata, virErrorPtr err);
+int isDomainDefined (char *xml, int conNum);
 void printDomList (int conNum);
