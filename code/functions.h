@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include "definitions.h"
 
-char inputOptions[][NumOfInputOptions] = {"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist", "destroy", "define", "start"};
+char inputOptions[][NumOfInputOptions] = {"connect", "close", "dumpxml", "createdom", "suspend", "resume", "save", "restore", "shutdown", "reboot", "dominfo", "numdomain", "nodeinfo", "nodelist", "nodecap", "load", "domlist", "destroy", "define", "start", "undefine", "domstate"};
 
 extern virDomainPtr globalDomainHandler;
 
@@ -55,7 +55,7 @@ void printNodeList () {
 void printDomList (int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
-		if (connection[conNum].domain[i].isdefined != 0) {
+		if (connection[conNum].domain[i].isdefined != 0 || connection[conNum].domain[i].isrunning != 0) {
 			fprintf (stdout, "%d\t%s\n", i+1, virDomainGetName (connection[conNum].domain[i].dom));
 		}
 	}
@@ -79,7 +79,7 @@ void createDomain (int conNum, int flag) {
 int getNextDomainThreadNum (int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
-		if (connection[conNum].domain[i].isdefined == 0) {
+		if (connection[conNum].domain[i].isdefined == 0 && connection[conNum].domain[i].isrunning == 0) {
 			return i;
 		}
 	}
@@ -233,7 +233,7 @@ int isDomainDefined (char *xml, int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
 		if (connection[conNum].domain[i].dom != NULL) {
-			if (virDomainGetXMLDesc (connection[conNum].domain[i].dom, 0) == xml) {
+			if (connection[conNum].domain[i].isdefined == 1) {
 				return i;
 			}
 		}
@@ -271,14 +271,62 @@ void defineDom (int conNum) {
 	fprintf (stdout, "Domain defined\n\n");
 }
 
+void undefineDom (int conNum) {
+	char domainName[50];
+	fprintf (stdout, "Enter domain name: ");
+	scanf ("%s", domainName);
+	int domNum, isret;
+	domNum = isDomCreated (domainName, conNum);
+	if (domNum == -1) {
+		fprintf (stderr, "Domain %s does not exists\n\n", domainName);
+		return;
+	}
+	connection[conNum].domain[domNum].isdefined = 0;
+	isret = virDomainUndefine (connection[conNum].domain[domNum].dom);
+	if (isret < 0) {
+		fprintf (stderr, "Cannot undefine domain %s\n\n", domainName);
+	}
+	virDomainFree (connection[conNum].domain[domNum].dom);
+	fprintf (stdout, "Domain %s undefined\n\n", domainName);
+}
+
 int isDomCreated (char *domName, int conNum) {
 	int i;
 	for (i=0; i < MaxNumDomains; i++) {
-		if (connection[conNum].domain[i].isdefined != 0) {
+		if (connection[conNum].domain[i].isdefined != 0 || connection[conNum].domain[i].isrunning != 0) {
 			if (!strcmp (virDomainGetName (connection[conNum].domain[i].dom), domName)) {
 				return i;
 			}
 		}
 	}
 	return -1;
+}
+
+char *extractState (int state) {
+	switch (state) {
+		case 0:
+			return "No state";
+		break;
+		
+		case 1:
+		return "Running";
+		
+		case 2:
+		return "Blocked";
+		
+		case 3:
+		return "Paused";
+		
+		case 4:
+		return "Shutdown";
+		
+		case 5:
+		return "Shut off";
+		
+		case 6:
+		return "Crashed";
+		
+		default:
+		return "State undefined";
+	}
 }

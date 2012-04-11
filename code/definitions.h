@@ -6,7 +6,7 @@
 #define CREATE_THREAD 1
 #define START_THREAD 2
 
-#define NumOfInputOptions 20
+#define NumOfInputOptions 22
 
 #define CONNECT 1
 #define CLOSECON 2
@@ -28,6 +28,8 @@
 #define DESTROY 18
 #define DEFINE 19
 #define START 20
+#define UNDEFINE 21
+#define DOMSTATE 22
 
 
 int globalConHandler;
@@ -50,3 +52,5 @@ void createDomain (int conNum, int flag);
 void *startDomain (void *arg);
 int isDomainDefined (char *xml, int conNum);
 void printDomList (int conNum);
+void undefineDom (int conNum);
+char *extractState (int state);

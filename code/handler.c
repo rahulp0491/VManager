@@ -103,6 +103,58 @@ int handleInput (int input) {
 		}
 		break;
 		
+		case UNDEFINE: {
+			int isret, conNum;
+			char hostname [50];
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
+				return -1;
+			}
+			undefineDom (conNum);
+		}
+		break;
+		
+		case DOMSTATE: {
+			int isret, conNum;
+			char hostname [50];
+			char name [50];
+			char *state;
+			fprintf (stdout, "Enter hostname: ");
+			scanf ("%s", hostname);
+			isret = isConnectionEstablished (hostname);
+			if (isret >= 0) {
+				conNum = isret;
+			}
+			else {
+				fprintf (stderr, "Error: Invalid connection to %s\n\n", hostname);
+				return -1;
+			}
+			fprintf (stdout, "Enter Domain name: ");
+			scanf ("%s", name);
+			virDomainPtr dom;
+			dom = virDomainLookupByName (connection[conNum].conn, name);
+			if (dom == NULL) {
+				fprintf (stdout, "Error: Invalid domain %s\n\n", name);
+				return -1;
+			}
+			virDomainInfoPtr info;
+			info = malloc (sizeof (virDomainInfo));
+			isret = virDomainGetInfo (dom, info);
+			if (isret != 0) {
+				fprintf (stderr, "Cannot extract info from domain %s\n\n", name);
+				return -1;
+			}
+			state = extractState (info->state);
+			fprintf (stdout, "%s\n\n", state);
+		}
+		break;
+		
 		case START: {
 			int isret, conNum;
 			char hostname [50];
@@ -164,9 +216,11 @@ int handleInput (int input) {
 		case DESTROY: {
 			fprintf (stdout, "Enter domain name: ");
 			char domName [20];
+			bzero (domName, 20);
 			int isret, conNum;
 			scanf ("%s", domName);
 			char hostname [50];
+			bzero (hostname, 50);
 			fprintf (stdout, "Enter hostname: ");
 			scanf ("%s", hostname);
 			isret = isConnectionEstablished (hostname);
@@ -182,14 +236,14 @@ int handleInput (int input) {
 				fprintf (stderr, "Error: Domain %s does not exists\n\n", domName);
 				return -1;
 			}
-			connection[conNum].domain[isret].isdefined = 0;
-			connection[conNum].domain[isret].isrunning = 0;
 			isret = virDomainDestroy(connection[conNum].domain[isret].dom);
 			virConnectClose (connection[conNum].conn);
 			if (isret != 0) {
 				fprintf (stderr, "Error: Cannot destroy domain object\n\n");
 				return -1;
 			}
+			connection[conNum].domain[isret].isdefined = 0;
+			connection[conNum].domain[isret].isrunning = 0;
 			fprintf (stdout, "Domain %s destroy on %s\n\n", domName, hostname);
 		}
 		break;
